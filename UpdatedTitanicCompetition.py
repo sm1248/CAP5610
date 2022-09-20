@@ -26,16 +26,33 @@ test_df=trainContest_df[800:]
 train_df= trainContest_df[:800]
 
 combine = [train_df, test_df, testContest_df]
+
+
 # data preprocessing
 train_df['Ticket_Type']=train_df['Ticket'].str[0]
 test_df['Ticket_Type']=test_df['Ticket'].str[0]
 testContest_df['Ticket_Type']=testContest_df['Ticket'].str[0]
 trainContest_df['Ticket_Type']=trainContest_df['Ticket'].str[0]
 
-train_df = train_df.drop(['Ticket'], axis=1)
-test_df = test_df.drop(['Ticket'], axis=1)
-testContest_df= testContest_df.drop(['Ticket'], axis=1)
-trainContest_df= trainContest_df.drop(['Ticket'], axis=1)
+combine = [train_df, test_df, testContest_df, trainContest_df]
+
+for dataset in combine: 
+  dataset.loc[dataset['Cabin'].isna(), 'Cabin']=0
+
+train_df['Cabin_Type']=train_df['Cabin'].str[0]
+test_df['Cabin_Type']=test_df['Cabin'].str[0]
+testContest_df['Cabin_Type']=testContest_df['Cabin'].str[0]
+trainContest_df['Cabin_Type']=trainContest_df['Cabin'].str[0]
+
+combine = [train_df, test_df, testContest_df, trainContest_df]
+
+for dataset in combine: 
+  dataset.loc[dataset['Cabin_Type'].isna(), 'Cabin_Type']=0
+
+train_df = train_df.drop(['Ticket', 'Cabin'], axis=1)
+test_df = test_df.drop(['Ticket', 'Cabin'], axis=1)
+testContest_df= testContest_df.drop(['Ticket', 'Cabin'], axis=1)
+trainContest_df= trainContest_df.drop(['Ticket', 'Cabin'], axis=1)
 combine = [train_df, test_df, testContest_df, trainContest_df]
 
 # extracting titles from the name field:
@@ -153,9 +170,11 @@ for dataset in combine:
 
 for dataset in combine: 
   dataset['ticketType*Fare']= dataset['Ticket_Type'] * dataset['Fare']
-for dataset in combine: 
-  dataset.loc[dataset['Cabin'].isna(), 'Cabin']=1
-  dataset.loc[dataset['Cabin'].notna(), 'Cabin']=2
+
+# convert Cabin_Type field to a new numeric port feature
+for dataset in combine:
+    dataset['Cabin_Type'] = dataset['Cabin_Type'].map({'D': 2, 'E': 2, 'B': 2, 'F': 2, 'C':2, 'G':1, 'A': 1})
+    dataset.loc[(dataset['Cabin_Type'] !='2') & (dataset['Cabin_Type'] !='1') & (dataset['Cabin_Type']!=0), 'Cabin_Type'] = 0
 
 train_df = train_df.drop(['FareBand'], axis=1)
 
