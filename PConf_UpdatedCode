@@ -1,0 +1,45 @@
+import torch
+import torch.nn as nn
+import numpy as np
+from torch.autograd import Variable
+import torch.optim as optim
+from sklearn import svm
+
+def getPositivePosterior(x, mu1, mu2, cov1, cov2, positive_prior):
+    """Returns the positive posterior p(y=+1|x)."""
+    conditional_positive = np.exp(-0.5 * (x - mu1).T.dot(np.linalg.inv(cov1)).dot(x - mu1)) / np.sqrt(np.linalg.det(cov1)*(2 * np.pi)**x.shape[0])
+    conditional_negative = np.exp(-0.5 * (x - mu2).T.dot(np.linalg.inv(cov2)).dot(x - mu2)) / np.sqrt(np.linalg.det(cov2)*(2 * np.pi)**x.shape[0])
+    marginal_dist = positive_prior * conditional_positive + (1 - positive_prior) * conditional_negative
+    positivePosterior = conditional_positive * positive_prior / marginal_dist
+    return positivePosterior
+
+class LinearNetwork(nn.Module):
+    def __init__(self, input_size, output_size):
+        super(LinearNetwork, self).__init__()
+        self.linear = nn.Linear(input_size, output_size)
+    
+    def forward(self, x):
+        out = self.linear(x)
+        return out
+
+def getAccuracy(x_test, y_test, model):
+    """Calculates the classification accuracy."""
+    predicted = model(Variable(torch.from_numpy(x_test)))
+    accuracy = np.sum(torch.sign(predicted).data.numpy() == np.matrix(y_test).T) * 1. / len(y_test)
+    return accuracy
+
+def pconfClassification(inputSize, num_epochs, lr, x_train_p, x_test, y_test, r):
+    model = LinearNetwork(input_size=inputSize, output_size=1)
+    optimizer = torch.optim.SGD(model.parameters(), lr = lr)
+    for epoch in range(num_epochs):
+        inputs = Variable(torch.from_numpy(x_train_p))
+        confidence = Variable(torch.from_numpy(r))
+        optimizer.zero_grad()
+        negative_logistic = nn.LogSigmoid()
+        logistic = -1. * negative_logistic(-1. * model(inputs))
+        loss = torch.sum(-model(inputs)+logistic * 1. / confidence)  # note that \ell_L(g) - \ell_L(-g) = -g with logistic loss
+        loss.backward()
+        optimizer.step()
+    params = list(model.parameters())
+    accuracy = getAccuracy(x_test=x_test, y_test=y_test, model=model)
+    return params, accuracy
